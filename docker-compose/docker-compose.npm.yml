@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '81:81'
+    volumes:
+      - /srv/npm/data:/data
+      - /srv/npm/letsencrypt:/letsencrypt
+networks:
+  default:
+    external: true
+    name: common-npm

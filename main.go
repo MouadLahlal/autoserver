@@ -12,9 +12,59 @@ import (
 )
 
 func main() {
-	fmt.Println("Automazione della configurazione del server con Go!")
+	PrepareNpm()
+	PrepareJellyfin()
+	StartContainers()
+}
 
-	execDockerCompose()
+func PrepareNpm() {
+	cmd := exec.Command("docker", "network", "create", "common-npm")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("Error in creating docker network : %s", err)
+	}
+
+	mkdir("/srv/npm/data")
+	mkdir("/srv/npm/letsencrypt")
+}
+
+func PrepareJellyfin() {
+	mkdir("/srv/jellyfin/config")
+	mkdir("/srv/jellyfin/cache")
+	mkdir("/media/movies")
+	mkdir("/media/series")
+	mkdir("/media/music")
+}
+
+func StartContainers() {
+	dir := "docker-compose"
+	
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		fmt.Println("Directory", dir, "does not exist")
+		return
+	}
+
+	files, err := os.ReadDir("docker-compose")
+	
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	for _, file := range files {
+		if !(file.IsDir()) {
+			fmt.Println("Found service :", file.Name())
+			cmd := exec.Command("docker", "compose", "-f", file.Name(), "up", "-d")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Dir = "docker-compose"
+
+			if err := cmd.Run(); err != nil {
+				log.Fatalf("Error in starting service : %s", err)
+			}
+		}
+	}
 }
 
 func execDockerCompose() {
@@ -35,25 +85,6 @@ func execDockerCompose() {
 	fmt.Println("Container/s successfully created")
 }
 
-func dockerPs() {
-	apiClient, err := client.NewClientWithOpts(client.FromEnv)
-	
-	if err != nil {
-		panic(err)
-	}
-
-	defer apiClient.Close()
-
-	containers, err := apiClient.ContainerList(context.Background(), container.ListOptions{All: true})
-	if err != nil {
-		panic(err)
-	}
-
-	for _, ctr := range containers {
-		fmt.Printf("%s %s (status: %s)\n", ctr.ID, ctr.Image, ctr.Status)
-	}
-}
-
 func stopAllContainers() {
 	apiClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -61,6 +92,10 @@ func stopAllContainers() {
 	}
 
 	defer apiClient.Close()
+
+	os.Setenv("DOCKER_API_VERSION", "1.45")
+	fmt.Println(os.Getenv("DOCKER_API_VERSION"))
+	fmt.Println(os.Getenv("HOME"))
 
 	containers, err := apiClient.ContainerList(context.Background(), container.ListOptions{All: false})
 	if err != nil {

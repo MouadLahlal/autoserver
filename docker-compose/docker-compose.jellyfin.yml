@@ -1,0 +1,17 @@
+version: '3.5'
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    volumes:
+      - /srv/jellyfin/config:/config
+      - /srv/jellyfin/cache:/cache
+      - type: bind
+        source: /media
+        target: /media
+        read_only: true
+    restart: 'unless-stopped'
+networks:
+  default:
+    external: true
+    name: common-npm
